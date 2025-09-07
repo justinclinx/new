@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Influencer Dashboard — Colorful Light (Interactive)</title>
+
+<!-- Tailwind CDN for quick styling -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+  :root{
+    --bg-1: #fbfdff;
+    --bg-2: #fff7fb;
+    --card: #ffffff;
+    --muted: #6b7280;
+    --accentA: linear-gradient(135deg,#8b5cf6 0%,#06b6d4 50%,#f472b6 100%);
+    --accentB: linear-gradient(135deg,#fde68a 0%,#fdba74 50%,#fb7185 100%);
+    --shadow: 0 10px 30px rgba(16,24,40,0.06);
+    --glass: rgba(255,255,255,0.72);
+  }
+  html,body{height:100%}
+  body{
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: linear-gradient(180deg,var(--bg-1),var(--bg-2));
+    color: #0f172a;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+
+  /* sizes & helpers */
+  .size-4{width:1rem;height:1rem}
+  .size-5{width:1.25rem;height:1.25rem}
+  .size-6{width:1.5rem;height:1.5rem}
+  .size-10{width:2.5rem;height:2.5rem}
+  .rounded-2xl{border-radius:1rem}
+  .rounded-3xl{border-radius:1.5rem}
+
+  .card{background:var(--card);border-radius:14px;box-shadow:var(--shadow)}
+  .card-soft{background:linear-gradient(180deg,rgba(255,255,255,0.9),rgba(255,255,255,0.98));border-radius:14px}
+  .muted{color:var(--muted)}
+  .tiny{font-size:.78rem;color:var(--muted)}
+  .pill{padding:.35rem .6rem;border-radius:999px;font-size:.85rem}
+
+  /* hover lift */
+  .hover-lift{transition:transform .22s cubic-bezier(.2,.9,.3,1), box-shadow .22s; will-change:transform}
+  .hover-lift:hover{transform:translateY(-8px); box-shadow:0 18px 40px rgba(16,24,40,0.08)}
+
+  /* glow */
+  .glow { transition: box-shadow .25s, transform .25s; }
+  .glow:hover { box-shadow: 0 0 30px rgba(99,102,241,0.14); transform: translateY(-6px) scale(1.01); }
+
+  /* tab content transitions */
+  .tab-panel { opacity:0; transform: translateY(8px); transition: all .28s cubic-bezier(.2,.9,.3,1); height: auto; }
+  .tab-panel.active { opacity:1; transform: translateY(0); }
+
+  /* ripple effect */
+  .ripple { position:relative; overflow:hidden; }
+  .ripple .ink { position:absolute; border-radius:50%; transform:scale(0); background:rgba(255,255,255,0.6); animation:ripple .6s linear; pointer-events:none; }
+  @keyframes ripple { to{ transform:scale(12); opacity:0 } }
+
+  /* button styles */
+  .accent-btn { background: linear-gradient(90deg,#7c3aed,#06b6d4); color:white; padding:.6rem .9rem; border-radius:12px; font-weight:600; }
+  .outline-btn { padding:.5rem .75rem; border-radius:10px; border:1px solid rgba(15,23,42,0.06); }
+
+  /* progress */
+  .prog-track { background:#f1f5f9; border-radius:999px; height:10px; overflow:hidden; }
+  .prog-fill { height:100%; border-radius:999px; width:0%; transition: width .9s cubic-bezier(.2,.9,.3,1); }
+
+  /* avatar & logo */
+  .brand-bubble{background:var(--accentA); color:white; display:inline-grid; place-items:center; font-weight:700}
+  .avatar-bubble{background:var(--accentB); color:white; display:inline-grid; place-items:center; font-weight:700}
+
+  /* confetti canvas overlay */
+  #confetti-canvas{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:60}
+
+  /* toast */
+  .toast { position:fixed; right:20px; bottom:24px; background:linear-gradient(180deg,#111827,#0f172a); color:white; padding:.8rem 1rem; border-radius:12px; box-shadow:0 6px 22px rgba(2,6,23,0.6); opacity:0; transform:translateY(12px); transition:all .25s; z-index:70}
+  .toast.show { opacity:1; transform:translateY(0) }
+
+  /* fun hover for tracking step */
+  .step-dot { width:28px;height:28px;border-radius:999px;background:#f1f5f9; display:inline-flex; align-items:center; justify-content:center; transition:transform .22s, background .22s; }
+  .step-dot.active { background:linear-gradient(90deg,#60a5fa,#7c3aed); color:white; transform:scale(1.05); }
+
+  /* responsive container width */
+  .max-w-xxl{max-width:1160px}
+</style>
+</head>
+<body>
+
+<!-- confetti canvas -->
+<canvas id="confetti-canvas" aria-hidden="true"></canvas>
+
+<!-- toast -->
+<div id="toast" class="toast" role="status" aria-live="polite"> notification</div>
+
+<!-- Topbar -->
+<header class="sticky top-0 bg-white/80 backdrop-blur z-40 border-b">
+  <div class="max-w-xxl mx-auto px-5 py-3 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-4">
+      <div class="brand-bubble size-10 rounded-2xl flex items-center justify-center shadow-sm hover:scale-105 hover:rotate-3 transition-all" style="width:56px;height:56px;">
+        <span style="font-size:18px">SG</span>
+      </div>
+      <div>
+        <div class="tiny muted">Julia Hair</div>
+        <div class="text-lg font-semibold">Influencer Portal</div>
+      </div>
+    </div>
+
+    <div class="flex-1 mx-6 hidden md:block">
+      <div class="relative">
+        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" viewBox="0 0 24 24" fill="none"><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input id="global-search" class="w-full pl-10 pr-4 py-2 border rounded-xl shadow-sm" placeholder="Search shipments, payouts, campaigns..." />
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button id="quick" class="outline-btn ripple">Quick Actions</button>
+      <div class="flex items-center gap-3">
+        <div class="avatar-bubble size-10 rounded-full hover:scale-105 transition-all" style="width:44px;height:44px">AV</div>
+        <div class="hidden sm:block">
+          <div contenteditable id="influencer-name" class="text-sm font-medium" style="outline:none">Simone</div>
+          <div class="tiny muted" id="influencer-tier">Bronze</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="max-w-xxl mx-auto px-5 py-6">
+  <div class="card-soft p-6 rounded-3xl border" style="border-color: rgba(99,102,241,0.06)">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+      <div>
+        <div class="tiny muted">Welcome back</div>
+        <h1 class="text-2xl md:text-3xl font-semibold"><span id="hero-name">Simone Decker Stroude</span> <span class="tiny muted">(@monalanez)</span></h1>
+        <div class="mt-3 flex items-center gap-2">
+          <div class="pill" style="background:linear-gradient(90deg,#fff7ed,#fff1f2); border:1px solid rgba(250,204,21,0.08)">Starter</div>
+          <div class="pill" style="background:linear-gradient(90deg,#eef2ff,#f3e8ff); border:1px solid rgba(124,58,237,0.06)">Code: <strong id="referral-code" class="ml-1">NEW10</strong></div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <button class="outline-btn ripple" id="download-report">Download Report</button>
+        <button class="accent-btn ripple" id="new-submission">New Submission</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Main -->
+<main class="max-w-xxl mx-auto px-5 pb-12">
+
+  <!-- Tabs -->
+  <nav class="mb-6">
+    <div class="flex flex-wrap gap-3">
+      <button class="tab-btn px-4 py-2 rounded-full bg-white shadow-sm hover:scale-[1.02] active-tab" data-tab="overview">Overview</button>
+      <button class="tab-btn px-4 py-2 rounded-full bg-white shadow-sm hover:scale-[1.02]" data-tab="tracking">Tracking</button>
+      <button class="tab-btn px-4 py-2 rounded-full bg-white shadow-sm hover:scale-[1.02]" data-tab="bonuses">Bonuses</button>
+      <button class="tab-btn px-4 py-2 rounded-full bg-white shadow-sm hover:scale-[1.02]" data-tab="payouts">Payouts</button>
+      <button class="tab-btn px-4 py-2 rounded-full bg-white shadow-sm hover:scale-[1.02]" data-tab="referrals">Referrals</button>
+    </div>
+  </nav>
+
+  <!-- Overview -->
+  <section id="overview" class="tab-panel active">
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div class="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- KPI cards -->
+        <div class="card p-4 hover-lift glow">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#c7b2ff,#86efac);">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M12 8v8" stroke="white" stroke-width="1.6"/></svg>
+            </div>
+            <div>
+              <div class="tiny muted">Earnings (30d)</div>
+              <div class="text-2xl font-semibold" id="earnings">$0</div>
+              <div class="tiny muted">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-4 hover-lift glow">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#fb7185,#60a5fa);">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M3 12h18" stroke="white" stroke-width="1.6"/></svg>
+            </div>
+            <div>
+              <div class="tiny muted">Clicks (30d)</div>
+              <div class="text-2xl font-semibold" id="clicks">0</div>
+              <div class="tiny muted">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-4 hover-lift glow">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#facc15,#fb7185);">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M3 3l18 18" stroke="white" stroke-width="1.6"/></svg>
+            </div>
+            <div>
+              <div class="tiny muted">Conv. Rate</div>
+              <div class="text-2xl font-semibold" id="conv">0%</div>
+              <div class="tiny muted">—</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card p-4 hover-lift glow">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-xl flex items-center justify-center" style="background:linear-gradient(135deg,#60a5fa,#f472b6);">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" stroke="white" stroke-width="1.6"/></svg>
+            </div>
+            <div>
+              <div class="tiny muted">New Customers</div>
+              <div class="text-2xl font-semibold" id="customers">0</div>
+              <div class="tiny muted">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- performance placeholder -->
+        <div class="card p-4 md:col-span-2 hover-lift">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <div class="font-semibold">Performance</div>
+              <div class="tiny muted">Revenue & Clicks ()</div>
+            </div>
+            <div class="tiny muted">Last 8 months</div>
+          </div>
+          <div class="h-44 rounded-md overflow-hidden flex items-center justify-center" style="background:linear-gradient(180deg,#ffffff,#f8fafc)">
+            <div class="tiny muted">No data yet — link your account</div>
+          </div>
+        </div>
+
+        <!-- top products placeholder -->
+        <div class="card p-4 hover-lift">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <div class="font-semibold">Top Products</div>
+              <div class="tiny muted">By revenue & conversion</div>
+            </div>
+          </div>
+          <div class="tiny muted">No product data yet — create sales to display top items.</div>
+        </div>
+      </div>
+
+      <!-- right column -->
+      <aside class="flex flex-col gap-6">
+        <div class="card p-4 hover-lift">
+          <div class="flex items-center justify-between mb-3">
+            <div><div class="font-semibold">Tasks & Quests</div><div class="tiny muted">Create quick posts or challenges</div></div>
+            <button class="outline-btn ripple" id="add-task">New</button>
+          </div>
+          <div class="tiny muted">No tasks yet — add a task to stay on track.</div>
+        </div>
+
+        <div class="card p-4 hover-lift">
+          <div class="flex items-center justify-between mb-3">
+            <div><div class="font-semibold">Upcoming Content</div><div class="tiny muted">Plan your next posts</div></div>
+            <button class="outline-btn ripple" id="new-content">Add</button>
+          </div>
+          <div class="tiny muted">No scheduled content.</div>
+        </div>
+
+        <div class="card p-4 hover-lift">
+          <div class="font-semibold mb-2">Notifications</div>
+          <div class="tiny muted" id="notif-area">No notifications yet.</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Tracking -->
+  <section id="tracking" class="tab-panel mt-8">
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h2 class="text-xl font-semibold">Shipment Tracking</h2>
+        <div class="tiny muted">Live tracking for packages sent to you</div>
+      </div>
+      <div class="tiny muted">Showing <span id="visible-count"></span>shipments</div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="ship-list">
+      <!-- 1: Real ETA -->
+      <article class="card p-4 hover-lift">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="font-semibold">Julia hair Package</div>
+            <div class="tiny muted">FedEx • SHIP-02102</div>
+          </div>
+          <div class="px-3 py-1 rounded-full" style="background:linear-gradient(90deg,#fde68a,#fb7185); color:#9a3412">In Transit</div>
+        </div>
+
+        <div class="mt-4">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="step-dot">1</div><div class="tiny">Label Created</div>
+            <div class="text-slate-300">›</div>
+            <div class="step-dot">2</div><div class="tiny">Picked Up</div>
+            <div class="text-slate-300">›</div>
+            <div class="step-dot">3</div><div class="tiny">In Transit</div>
+          </div>
+
+          <div class="flex items-center justify-between mt-2">
+            <div class="tiny muted">ETA: <strong>Pending</strong></div>
+            <div class="flex gap-2">
+              <button class="outline-btn ripple tiny">Refesh</button>
+              <button class="outline-btn ripple tiny">Rates</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 2: Pending ETA -->
+      <article class="card p-4 hover-lift">
+        <div class="flex items-start justify-between">
+         
+          </div>
+        </div>
+      </article>
+
+     
+    <div class="mt-4 flex items-center gap-3">
+      <input id="ship-filter" class="pl-3 pr-3 py-2 border rounded-xl w-64" placeholder="Filter shipments (id, carrier, status)"/>
+      <button id="clear-filter" class="px-3 py-2 rounded-xl border tiny">Clear</button>
+    </div>
+  </section>
+
+  <!-- Bonuses -->
+  <section id="bonuses" class="tab-panel mt-8">
+    <div class="flex items-center justify-between mb-4">
+      <div><h2 class="text-xl font-semibold">Bonuses</h2><div class="tiny muted">Track goals & unlock rewards</div></div>
+      <div><button id="-claim" class="accent-btn ripple">Claim  Bonus</button></div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- placeholder bonus cards (current = 0) -->
+      <div class="card p-4 hover-lift">
+        <div class="flex items-center justify-between mb-3">
+          <div><div class="font-semibold">Launch Push</div><div class="tiny muted">Reach 100 sales — $500</div></div>
+          <div class="tiny muted">Due Sep 30, 2025</div>
+        </div>
+        <div class="tiny muted mb-2">Progress</div>
+        <div class="prog-track mb-2"><div class="prog-fill" data-target="0" style="width:0%; background:linear-gradient(90deg,#60a5fa,#f472b6)"></div></div>
+        <div class="tiny muted">0 / 100 (0%)</div>
+        <div class="mt-3 flex gap-2">
+          <button class="outline-btn ripple tiny" onclick="toast('Invite more followers to increase progress')">Share</button>
+          <button class="accent-btn ripple tiny" onclick="triggerConfetti()">Preview</button>
+        </div>
+      </div>
+
+      <div class="card p-4 hover-lift">
+        <div class="flex items-center justify-between mb-3">
+          <div><div class="font-semibold">Reels Sprint</div><div class="tiny muted">Post 6 reels — $200</div></div>
+          <div class="tiny muted">Due Sep 30, 2025</div>
+        </div>
+        <div class="tiny muted mb-2">Progress</div>
+        <div class="prog-track mb-2"><div class="prog-fill" data-target="0" style="width:0%; background:linear-gradient(90deg,#facc15,#fb7185)"></div></div>
+        <div class="tiny muted">0 / 6 (0%)</div>
+      </div>
+
+      <div class="card p-4 hover-lift">
+        <div class="flex items-center justify-between mb-3">
+          <div><div class="font-semibold">Referral Boost</div><div class="tiny muted">Refer 5 creators — $300</div></div>
+          <div class="tiny muted">Due Oct 15, 2025</div>
+        </div>
+        <div class="tiny muted mb-2">Progress</div>
+        <div class="prog-track mb-2"><div class="prog-fill" data-target="0" style="width:0%; background:linear-gradient(90deg,#86efac,#60a5fa)"></div></div>
+        <div class="tiny muted">0 / 5 (0%)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Payouts -->
+  <section id="payouts" class="tab-panel mt-8">
+    <div class="flex items-center justify-between mb-4">
+      <div><h2 class="text-xl font-semibold">Payouts</h2><div class="tiny muted">Payment history & next payout</div></div>
+      <div><button id="-payout" class="accent-btn ripple">Add Payment Method</button></div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div class="lg:col-span-2 card p-4 hover-lift">
+        <div class="font-semibold mb-3">Payout History</div>
+        <div class="tiny muted">No payouts yet — link a payment method to receive transfers.</div>
+      </div>
+      <div class="card p-4 hover-lift">
+        <div class="font-semibold mb-2">Next Payout</div>
+        <div class="text-2xl font-semibold" id="next-payout">$0</div>
+        <div class="tiny muted mt-2">Estimated: —</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Referrals -->
+  <section id="referrals" class="tab-panel mt-8">
+    <div class="flex items-center justify-between mb-4">
+      <div><h2 class="text-xl font-semibold">Referrals</h2><div class="tiny muted">Invite creators and earn</div></div>
+      <div class="flex items-center gap-3">
+        <input id="ref-field" readonly value="Use code NEW10 at checkout" class="pl-3 pr-3 py-2 border rounded-xl tiny" />
+        <button id="copy-ref" class="outline-btn ripple tiny">Copy</button>
+      </div>
+    </div>
+
+    <div class="card p-4 hover-lift">
+      <div class="font-semibold mb-3">Referral Performance</div>
+      <div class="tiny muted">No referrals tracked yet.</div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer class="border-t py-5">
+  <div class="max-w-xxl mx-auto px-5 tiny muted flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="brand-bubble size-6 rounded-lg" style="width:40px;height:40px">SG</div>
+      <div>Julia Hair © <span id="year"></span></div>
+    </div>
+    <div class="flex gap-4">
+      <a class="tiny muted" href="#">Support</a>
+      <a class="tiny muted" href="#">Docs</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ---------- Utilities & UI Interactions ---------- */
+
+// toast
+const toastEl = document.getElementById('toast');
+let toastTimer = null;
+function toast(msg, ms=2500){
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>toastEl.classList.remove('show'), ms);
+}
+
+// ripple effect
+function addRipple(btn){
+  btn.addEventListener('click', function(e){
+    const ink = document.createElement('span'); ink.className='ink';
+    const rect = this.getBoundingClientRect();
+    const d = Math.max(rect.width, rect.height);
+    ink.style.width = ink.style.height = d+'px';
+    ink.style.left = (e.clientX - rect.left - d/2) + 'px';
+    ink.style.top = (e.clientY - rect.top - d/2) + 'px';
+    this.appendChild(ink);
+    setTimeout(()=> ink.remove(), 650);
+  });
+}
+document.querySelectorAll('.ripple').forEach(addRipple);
+
+// tabs with smooth transitions + notification
+const tabs = document.querySelectorAll('.tab-btn');
+const panels = document.querySelectorAll('.tab-panel');
+function activateTab(tabName){
+  panels.forEach(p=>{
+    if (p.id === tabName){ p.classList.add('active'); p.classList.add('active'); p.classList.add('active'); p.classList.add('active'); p.classList.add('active'); }
+  });
+}
+tabs.forEach(t=>{
+  t.addEventListener('click', ()=>{
+    tabs.forEach(b=>b.classList.remove('active-tab'));
+    t.classList.add('active-tab');
+    const name = t.dataset.tab;
+    panels.forEach(panel=>{
+      if (panel.id === name){
+        panel.classList.add('active');
+        panel.style.display = '';
+        setTimeout(()=>panel.classList.add('active'), 10);
+      } else {
+        panel.classList.remove('active');
+        setTimeout(()=>panel.style.display = 'none', 260);
+      }
+    });
+    toast(`Opened ${t.textContent.trim()}`);
+  });
+});
+// start with overview
+document.querySelector('.tab-btn[data-tab="overview"]').click();
+
+// animate step dots on hover for tracking cards
+document.querySelectorAll('#ship-list article').forEach(card=>{
+  card.addEventListener('mouseenter', ()=>{
+    card.querySelectorAll('.step-dot').forEach((d,i)=>{
+      setTimeout(()=> d.classList.add('active'), i*80);
+    });
+  });
+  card.addEventListener('mouseleave', ()=>{
+    card.querySelectorAll('.step-dot').forEach(d=> d.classList.remove('active'));
+  });
+});
+
+// shipment filter
+const shipFilter = document.getElementById('ship-filter');
+const shipList = document.getElementById('ship-list');
+const visibleCount = document.getElementById('visible-count');
+function refreshVisible(){
+  const cards = Array.from(shipList.children);
+  const visible = cards.filter(c=> c.style.display !== 'none').length;
+  visibleCount.textContent = visible;
+}
+if (shipFilter) {
+  shipFilter.addEventListener('input', ()=> {
+    const q = shipFilter.value.trim().toLowerCase();
+    Array.from(shipList.children).forEach(card=>{
+      const t = card.innerText.toLowerCase();
+      card.style.display = (!q || t.includes(q)) ? '' : 'none';
+    });
+    refreshVisible();
+  });
+}
+document.getElementById('clear-filter').addEventListener('click', ()=>{
+  if (shipFilter) shipFilter.value = '';
+  Array.from(shipList.children).forEach(c=> c.style.display = '');
+  refreshVisible();
+});
+
+// global search also filters shipments
+const globalSearch = document.getElementById('global-search');
+if (globalSearch){
+  globalSearch.addEventListener('input', ()=>{
+    const q = globalSearch.value.trim().toLowerCase();
+    Array.from(shipList.children).forEach(card=>{
+      const t = card.innerText.toLowerCase();
+      card.style.display = (!q || t.includes(q)) ? '' : 'none';
+    });
+    refreshVisible();
+  });
+}
+
+// copy referral
+document.getElementById('copy-ref').addEventListener('click', async ()=>{
+  const val = document.getElementById('ref-field').value;
+  try { await navigator.clipboard.writeText(val); toast('Referral copied!'); }
+  catch(e){ toast('Copy failed — select & copy manually'); }
+});
+
+// interactive progress bars: hover to animate to data-target (visual only)
+document.querySelectorAll('.prog-track').forEach(track=>{
+  const fill = track.querySelector('.prog-fill');
+  const target = parseInt(fill.dataset.target || '0', 10);
+  track.parentElement.addEventListener('mouseenter', ()=> {
+    // if target 0,  animate to small ephemeral value then return
+    if (target === 0){
+      fill.style.width = '60%';
+      setTimeout(()=> fill.style.width = '0%', 1200);
+    } else {
+      fill.style.width = target + '%';
+    }
+  });
+  track.parentElement.addEventListener('mouseleave', ()=> {
+    fill.style.width = '0%';
+  });
+});
+
+//  claim bonus triggers confetti + toast
+document.getElementById('-claim').addEventListener('click', ()=>{
+  triggerConfetti(); toast('Nice! That was a  claim (no real funds).');
+});
+
+//  add payout -> confetti + toast
+document.getElementById('-payout').addEventListener('click', ()=>{
+  triggerConfetti(); toast('Payment method added ().');
+});
+
+// some other  buttons
+document.getElementById('add-task').addEventListener('click', ()=> toast('Task created ()'));
+document.getElementById('new-content').addEventListener('click', ()=> toast('Content placeholder created ()'));
+document.getElementById('new-submission').addEventListener('click', ()=> toast('Open submission modal ()'));
+document.getElementById('download-report').addEventListener('click', ()=> toast('Report generated ()'));
+
+// copy referral top
+document.getElementById('copy-ref')?.addEventListener('click', ()=>{});
+document.getElementById('copy-ref')?.addEventListener('click', ()=>{});
+
+// show year
+document.getElementById('year').textContent = new Date().getFullYear();
+
+// update influencer name in hero when edit (simple binding)
+const heroNameEl = document.getElementById('hero-name');
+const nameField = document.getElementById('influencer-name');
+nameField.addEventListener('input', ()=> heroNameEl.textContent = nameField.textContent);
+
+/* ---------- Confetti (lightweight) ---------- */
+const confettiCanvas = document.getElementById('confetti-canvas');
+const ctx = confettiCanvas.getContext('2d');
+let confettiPieces = [];
+function resizeCanvas(){
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function rand(min,max){ return Math.random()*(max-min)+min; }
+function createConfetti(x = window.innerWidth/2, y = window.innerHeight/2, count = 40){
+  const colors = ['#f472b6','#7c3aed','#06b6d4','#f59e0b','#34d399','#60a5fa','#fb7185'];
+  for (let i=0;i<count;i++){
+    confettiPieces.push({
+      x, y,
+      vx: rand(-6,6),
+      vy: rand(-12,-4),
+      size: rand(6,12),
+      angle: rand(0,360),
+      color: colors[Math.floor(rand(0,colors.length))],
+      spin: rand(-0.2,0.2),
+      life: rand(50,120)
+    });
+  }
+}
+function updateConfetti(){
+  ctx.clearRect(0,0,confettiCanvas.width, confettiCanvas.height);
+  confettiPieces.forEach((p, idx) => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.4; // gravity
+    p.angle += p.spin;
+    p.life--;
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.angle);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size*0.6);
+    ctx.restore();
+    if (p.life <= 0 || p.y > confettiCanvas.height + 50) confettiPieces.splice(idx,1);
+  });
+  if (confettiPieces.length > 0) requestAnimationFrame(updateConfetti);
+}
+function triggerConfetti(x,y){
+  const cx = x || window.innerWidth/2;
+  const cy = y || window.innerHeight/3;
+  createConfetti(cx, cy, 60);
+  updateConfetti();
+}
+
+/* ---------- Tiny sound (optional) ---------- */
+function beep(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 880;
+    g.gain.value = 0.02;
+    o.connect(g); g.connect(ctx.destination);
+    o.start(0);
+    setTimeout(()=>{ o.stop(); ctx.close(); }, 120);
+  } catch(e){}
+}
+
+/* ---------- Lightweight accessibility tweaks ---------- */
+// allow Enter to trigger copy on copy buttons
+document.querySelectorAll('button').forEach(b=>{
+  b.setAttribute('tabindex','0');
+});
+
+/* ---------- Initial state: keep metrics zero as requested ---------- */
+document.getElementById('earnings').textContent = '$0';
+document.getElementById('clicks').textContent = '0';
+document.getElementById('conv').textContent = '0%';
+document.getElementById('customers').textContent = '0';
+document.getElementById('next-payout').textContent = '$0';
+
+// animate subtle entrance for visible panels
+document.querySelectorAll('.tab-panel').forEach(p=>{
+  if (p.classList.contains('active')) p.style.display = '';
+  else p.style.display = 'none';
+});
+
+</script>
+</body>
+</html>
